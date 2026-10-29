@@ -38,6 +38,17 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "887c0ccb-cd04-4022-8716-6983de9b2dcd"
+      }
+    },
+    "owner": "dpeteran"
   }
 }

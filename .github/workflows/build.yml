@@ -1,0 +1,71 @@
+name: Build Android
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck et lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx expo lint
+
+  build:
+    name: APK
+    needs: check
+    # Pas de build pour les PR : le secret EXPO_TOKEN n'y est pas exposé.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+
+      # Build sur le runner GitHub, signé avec la clé Android stockée chez EAS.
+      - name: Build de l'APK
+        run: eas build --platform android --profile preview --local --non-interactive --output "$GITHUB_WORKSPACE/matcha.apk"
+
+      - name: Nommer l'APK
+        run: mv matcha.apk "matcha-${GITHUB_REF_NAME//\//-}-${GITHUB_SHA::7}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: matcha-apk
+          path: matcha-*.apk
+          if-no-files-found: error
+
+      # Un tag « v1.2.3 » publie une release GitHub avec l'APK.
+      - name: Publier la release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: matcha-*.apk
+          generate_release_notes: true
