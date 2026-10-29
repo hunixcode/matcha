@@ -1,8 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Bounce, Reveal } from '@/components/motion';
+import { NAVBAR_SPACE } from '@/components/NavBar';
 import { Eyebrow, ProgressBar, tap } from '@/components/ui';
 import { reportList } from '@/reports';
 import { capitalize, formatLongDate, toIsoDate } from '@/reports/format';
@@ -23,7 +25,7 @@ export default function Home() {
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + space.xl, paddingBottom: insets.bottom + space.xxl }]}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + space.xl, paddingBottom: insets.bottom + NAVBAR_SPACE }]}
     >
       <View style={styles.brandRow}>
         <View style={styles.brandDot} />
@@ -41,7 +43,9 @@ export default function Home() {
 
       <View style={styles.cards}>
         {reportList.map((def, index) => (
-          <ReportCard key={def.id} def={def} index={index} />
+          <Reveal key={def.id} index={index + 1}>
+            <ReportCard def={def} index={index} />
+          </Reveal>
         ))}
       </View>
 
@@ -60,14 +64,14 @@ function ReportCard({ def, index }: { def: ReportDefinition; index: number }) {
   const started = progress > 0.08;
 
   return (
-    <Pressable
+    <Bounce scaleTo={0.97}
       accessibilityRole="button"
       accessibilityLabel={`Ouvrir le formulaire ${def.code}`}
       onPress={() => {
         tap();
         router.push({ pathname: '/form/[type]', params: { type: def.id } });
       }}
-      style={({ pressed }) => [styles.card, { backgroundColor: theme.bg, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      style={[styles.card, { backgroundColor: theme.bg }]}
     >
       <View style={[styles.ring, { borderColor: theme.sub }]} />
       <View style={[styles.ring, styles.ringInner, { borderColor: theme.sub }]} />
@@ -89,7 +93,7 @@ function ReportCard({ def, index }: { def: ReportDefinition; index: number }) {
           {started ? `Brouillon en cours · ${Math.round(progress * 100)} %` : 'Nouveau rapport'}
         </Text>
       </View>
-    </Pressable>
+    </Bounce>
   );
 }
 

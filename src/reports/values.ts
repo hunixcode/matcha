@@ -17,6 +17,10 @@ function defaultValue(field: Field): FieldValue {
       return field.min ?? 0;
     case 'toggle':
       return undefined;
+    case 'checkbox':
+      return false;
+    case 'rooms':
+      return field.rooms.map((room) => ({ ...emptyItem(field.fields), id: room, done: false }));
     default:
       return '';
   }
@@ -43,6 +47,14 @@ export function initialValues(def: ReportDefinition, previous?: Values): Values 
   return values;
 }
 
+/** Salles cochées « faites » d'un champ `rooms`. */
+export function doneRooms(value: FieldValue): RepeaterItem[] {
+  if (!Array.isArray(value)) return [];
+  return (value as (string | RepeaterItem)[]).filter(
+    (room): room is RepeaterItem => typeof room === 'object' && room.done === true,
+  );
+}
+
 export function isEmpty(value: FieldValue): boolean {
   if (value === undefined || value === null) return true;
   if (typeof value === 'string') return value.trim() === '';
@@ -61,6 +73,8 @@ export function missingRequired(def: ReportDefinition, values: Values): string[]
 export function completion(def: ReportDefinition, values: Values): number {
   const fields = allFields(def).filter((f) => f.type !== 'number' && !f.hiddenInReport);
   if (fields.length === 0) return 0;
-  const filled = fields.filter((f) => !isEmpty(values[f.key])).length;
+  const filled = fields.filter((f) =>
+    f.type === 'rooms' ? doneRooms(values[f.key]).length > 0 : !isEmpty(values[f.key]),
+  ).length;
   return filled / fields.length;
 }

@@ -1,9 +1,11 @@
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import type { ComponentProps, ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { colors, fonts, radius, space } from '@/theme';
+
+import { Bounce } from './motion';
 
 export type IconName = ComponentProps<typeof Feather>['name'];
 
@@ -42,7 +44,7 @@ export function Button({
 }) {
   const theme = buttonTheme[variant];
   return (
-    <Pressable
+    <Bounce scaleTo={0.96} containerStyle={style}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -53,7 +55,7 @@ export function Button({
     >
       <Text style={[styles.buttonLabel, { color: theme.fg }]}>{label}</Text>
       {icon ? <Feather name={icon} size={18} color={theme.fg} /> : null}
-    </Pressable>
+    </Bounce>
   );
 }
 
@@ -70,7 +72,7 @@ export function IconButton({
 }) {
   const dark = tone === 'dark';
   return (
-    <Pressable
+    <Bounce scaleTo={0.86}
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={8}
@@ -84,7 +86,7 @@ export function IconButton({
       ]}
     >
       <Feather name={icon} size={20} color={dark ? colors.paper : colors.ink} />
-    </Pressable>
+    </Bounce>
   );
 }
 

@@ -1,14 +1,26 @@
 import { Feather } from '@expo/vector-icons';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useState, type ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatLongDate, parseIsoDate, toIsoDate } from '@/reports/format';
-import type { Field, FieldValue, RepeaterField, RepeaterItem, SimpleField } from '@/reports/types';
+import type { Field, FieldValue, RepeaterField, RepeaterItem, RoomsField, SimpleField } from '@/reports/types';
 import { emptyItem } from '@/reports/values';
 import { colors, fonts, radius, space } from '@/theme';
 
-import { tap } from './ui';
+import { Bounce, Pop } from './motion';
+import { BottomBar, Button, IconButton, tap } from './ui';
 
 type FieldProps<F extends Field = Field> = {
   field: F;
@@ -34,13 +46,17 @@ export function FieldInput(props: FieldProps) {
         return <YesNoControl {...props} />;
       case 'number':
         return <StepperControl {...(props as FieldProps<SimpleField>)} />;
+      case 'checkbox':
+        return <CheckboxControl {...props} />;
       case 'repeater':
         return <RepeaterControl {...(props as FieldProps<RepeaterField>)} />;
+      case 'rooms':
+        return <RoomsControl {...(props as FieldProps<RoomsField>)} />;
     }
   })();
 
-  // Le répéteur affiche ses propres intitulés : pas de libellé au-dessus.
-  if (field.type === 'repeater') return control;
+  // Ces contrôles affichent leurs propres intitulés : pas de libellé au-dessus.
+  if (field.type === 'repeater' || field.type === 'rooms' || field.type === 'checkbox') return control;
 
   return (
     <FieldShell label={field.label} required={field.required} hint={field.hint} error={props.error}>
@@ -181,7 +197,7 @@ function ChipsControl({ field, value, onChange }: FieldProps<SimpleField>) {
       {options.map((option) => {
         const active = selected.includes(option);
         return (
-          <Pressable
+          <Bounce scaleTo={0.9}
             key={option}
             onPress={() => toggle(option)}
             accessibilityRole={multi ? 'checkbox' : 'radio'}
@@ -190,7 +206,7 @@ function ChipsControl({ field, value, onChange }: FieldProps<SimpleField>) {
           >
             {active && multi ? <Feather name="check" size={14} color={colors.paper} /> : null}
             <Text style={[styles.chipText, active && styles.chipTextActive]}>{option}</Text>
-          </Pressable>
+          </Bounce>
         );
       })}
     </View>
@@ -235,9 +251,9 @@ function StepperControl({ field, value, onChange }: FieldProps<SimpleField>) {
   };
   return (
     <View style={styles.stepper}>
-      <Pressable onPress={() => set(current - 1)} style={styles.stepperButton} accessibilityLabel="Diminuer">
+      <Bounce scaleTo={0.85} onPress={() => set(current - 1)} style={styles.stepperButton} accessibilityLabel="Diminuer">
         <Feather name="minus" size={20} color={colors.ink} />
-      </Pressable>
+      </Bounce>
       <TextInput
         value={String(current)}
         onChangeText={(t) => {
@@ -248,14 +264,132 @@ function StepperControl({ field, value, onChange }: FieldProps<SimpleField>) {
         selectTextOnFocus
         style={styles.stepperValue}
       />
-      <Pressable
+      <Bounce scaleTo={0.85}
         onPress={() => set(current + 1)}
         style={[styles.stepperButton, styles.stepperButtonPlus]}
         accessibilityLabel="Augmenter"
       >
         <Feather name="plus" size={20} color={colors.paper} />
-      </Pressable>
+      </Bounce>
     </View>
+  );
+}
+
+function CheckboxControl({ field, value, onChange }: FieldProps) {
+  const checked = value === true;
+  return (
+    <Bounce scaleTo={0.97}
+      onPress={() => {
+        tap();
+        onChange(!checked);
+      }}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+      style={({ pressed }) => [styles.checkbox, checked && styles.checkboxActive, pressed && !checked && styles.chipPressed]}
+    >
+      <View style={[styles.checkboxBox, checked && styles.checkboxBoxActive]}>
+        {checked ? (
+          <Pop>
+            <Feather name="check" size={16} color={colors.paper} />
+          </Pop>
+        ) : null}
+      </View>
+      <Text style={styles.checkboxLabel}>{field.label}</Text>
+    </Bounce>
+  );
+}
+
+function RoomsControl({ field, value, onChange }: FieldProps<RoomsField>) {
+  const rooms = (value as RepeaterItem[] | undefined) ?? [];
+  const [openId, setOpenId] = useState<string | null>(null);
+  const open = rooms.find((room) => room.id === openId);
+  const doneCount = rooms.filter((room) => room.done === true).length;
+
+  const update = (id: string, key: string, next: FieldValue) =>
+    onChange(rooms.map((room) => (room.id === id ? { ...room, [key]: next as RepeaterItem[string] } : room)));
+
+  return (
+    <View style={styles.rooms}>
+      <Text style={styles.label}>
+        {field.label}{' '}
+        <Text style={styles.roomsCount}>
+          {doneCount}/{rooms.length} faites
+        </Text>
+      </Text>
+      <View style={styles.roomGrid}>
+        {rooms.map((room) => {
+          const done = room.done === true;
+          return (
+            <Bounce scaleTo={0.94} containerStyle={styles.roomCell}
+              key={room.id}
+              onPress={() => {
+                tap();
+                setOpenId(room.id);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Salle ${room.id}, ${done ? 'faite' : 'non faite'}`}
+              style={({ pressed }) => [styles.roomTile, done && styles.roomTileDone, pressed && { opacity: 0.8 }]}
+            >
+              <Feather name={done ? 'check-circle' : 'circle'} size={18} color={done ? colors.paper : colors.muted} />
+              <Text style={[styles.roomName, done && styles.roomNameDone]}>{room.id}</Text>
+            </Bounce>
+          );
+        })}
+      </View>
+      {open ? (
+        <RoomModal
+          title={open.id}
+          fields={field.fields}
+          room={open}
+          onChange={(key, next) => update(open.id, key, next)}
+          onClose={() => setOpenId(null)}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function RoomModal({
+  title,
+  fields,
+  room,
+  onChange,
+  onClose,
+}: {
+  title: string;
+  fields: SimpleField[];
+  room: RepeaterItem;
+  onChange: (key: string, value: FieldValue) => void;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <KeyboardAvoidingView style={styles.modal} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[styles.modalContent, { paddingTop: insets.top + space.md }]}
+        >
+          <View style={styles.modalTop}>
+            <IconButton icon="arrow-left" label="Fermer" onPress={onClose} />
+          </View>
+          <Text style={styles.modalTitle}>{title}</Text>
+          <CheckboxControl
+            field={{ key: 'done', type: 'checkbox', label: 'Salle faite (incluse dans le rapport)' }}
+            value={room.done}
+            onChange={(v) => onChange('done', v)}
+          />
+          <View style={styles.modalFields}>
+            {fields.map((sub) => (
+              <FieldInput key={sub.key} field={sub} value={room[sub.key]} onChange={(v) => onChange(sub.key, v)} />
+            ))}
+          </View>
+        </ScrollView>
+        <BottomBar bottomInset={insets.bottom}>
+          <Button label="Terminé" icon="check" onPress={onClose} />
+        </BottomBar>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -290,7 +424,7 @@ function RepeaterControl({ field, value, onChange }: FieldProps<RepeaterField>) 
           ))}
         </View>
       ))}
-      <Pressable
+      <Bounce scaleTo={0.97}
         onPress={() => {
           tap();
           onChange([...items, emptyItem(field.fields)]);
@@ -299,7 +433,7 @@ function RepeaterControl({ field, value, onChange }: FieldProps<RepeaterField>) 
       >
         <Feather name="plus" size={18} color={colors.matcha700} />
         <Text style={styles.addButtonText}>{field.addLabel}</Text>
-      </Pressable>
+      </Bounce>
     </View>
   );
 }
@@ -442,6 +576,100 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: colors.ink,
     paddingVertical: 4,
+  },
+  checkbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    minHeight: 52,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.sm + 2,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    backgroundColor: colors.paper,
+  },
+  checkboxActive: {
+    borderColor: colors.matcha500,
+    backgroundColor: colors.matcha50,
+  },
+  checkboxBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxBoxActive: {
+    backgroundColor: colors.matcha700,
+    borderColor: colors.matcha700,
+  },
+  checkboxLabel: {
+    flex: 1,
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+    color: colors.ink,
+  },
+  rooms: {
+    gap: space.md,
+  },
+  roomsCount: {
+    fontFamily: fonts.medium,
+    color: colors.matcha700,
+  },
+  roomGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+  },
+  roomCell: {
+    width: '31%',
+    flexGrow: 1,
+  },
+  roomTile: {
+    minHeight: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    backgroundColor: colors.paper,
+  },
+  roomTileDone: {
+    backgroundColor: colors.matcha700,
+    borderColor: colors.matcha700,
+  },
+  roomName: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: colors.ink,
+  },
+  roomNameDone: {
+    color: colors.paper,
+  },
+  modal: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalContent: {
+    paddingHorizontal: space.lg,
+    paddingBottom: space.xxl,
+    gap: space.lg,
+  },
+  modalTop: {
+    flexDirection: 'row',
+  },
+  modalTitle: {
+    fontFamily: fonts.serif,
+    fontSize: 40,
+    lineHeight: 44,
+    color: colors.ink,
+  },
+  modalFields: {
+    gap: space.xl,
+    marginTop: space.sm,
   },
   repeater: {
     gap: space.md,

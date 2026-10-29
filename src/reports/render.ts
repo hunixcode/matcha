@@ -10,6 +10,7 @@ export function formatValue(field: SimpleField, value: FieldValue): string {
     case 'date':
       return formatLongDate(String(value));
     case 'toggle':
+    case 'checkbox':
       return value ? 'Oui' : 'Non';
     case 'multiselect':
       return (value as string[]).join(', ');
@@ -33,7 +34,7 @@ function renderField(field: SimpleField, value: FieldValue, indent = ''): string
 function renderSection(section: Section, values: Values): string[] {
   const lines: string[] = [];
   for (const field of section.fields) {
-    if (field.hiddenInReport) continue;
+    if (field.hiddenInReport || field.type === 'rooms') continue;
     const value = values[field.key];
     if (field.type === 'repeater') {
       const items = (value as RepeaterItem[] | undefined) ?? [];

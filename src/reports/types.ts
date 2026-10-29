@@ -23,6 +23,7 @@ export type SelectField = FieldBase & { type: 'select'; options: string[] };
 export type MultiSelectField = FieldBase & { type: 'multiselect'; options: string[] };
 export type ToggleField = FieldBase & { type: 'toggle' };
 export type NumberField = FieldBase & { type: 'number'; min?: number; max?: number };
+export type CheckboxField = FieldBase & { type: 'checkbox' };
 
 export type SimpleField =
   | TextField
@@ -32,7 +33,8 @@ export type SimpleField =
   | SelectField
   | MultiSelectField
   | ToggleField
-  | NumberField;
+  | NumberField
+  | CheckboxField;
 
 export type RepeaterField = FieldBase & {
   type: 'repeater';
@@ -41,7 +43,17 @@ export type RepeaterField = FieldBase & {
   fields: SimpleField[];
 };
 
-export type Field = SimpleField | RepeaterField;
+/**
+ * Une case par salle, qui ouvre un sous-formulaire. Valeur : un élément par salle
+ * (`id` = nom de la salle, `done` = salle faite). Seules les salles faites vont dans le rapport.
+ */
+export type RoomsField = FieldBase & {
+  type: 'rooms';
+  rooms: string[];
+  fields: SimpleField[];
+};
+
+export type Field = SimpleField | RepeaterField | RoomsField;
 
 export type Section = {
   key: string;

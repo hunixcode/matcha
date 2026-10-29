@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { NavBar } from '@/components/NavBar';
 import { DraftsProvider, useDrafts } from '@/store/drafts';
 import { colors } from '@/theme';
 
@@ -55,12 +56,18 @@ function AppStack() {
   if (!hydrated) return null;
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        animation: 'slide_from_right',
-        contentStyle: { backgroundColor: colors.background },
-      }}
-    />
+    <>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        {/* Onglets : on bascule de l'un à l'autre sans empiler d'écrans. */}
+        <Stack.Screen name="salles" options={{ animation: 'fade' }} />
+      </Stack>
+      <NavBar />
+    </>
   );
 }
